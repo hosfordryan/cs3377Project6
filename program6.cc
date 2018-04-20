@@ -7,16 +7,35 @@
  */
 
 #include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <stdint.h>
+#include <inttypes.h>
 #include "cdk.h"
 
 
-#define MATRIX_WIDTH 4
-#define MATRIX_HEIGHT 3
-#define BOX_WIDTH 15
-#define MATRIX_NAME_STRING "Test Matrix"
+#define MATRIX_WIDTH 3
+#define MATRIX_HEIGHT 5
+#define BOX_WIDTH 20
+#define MATRIX_NAME_STRING "Binary File Contents"
 
 using namespace std;
 
+class BinaryFileHeader{
+	public:
+		uint32_t magicNumber;
+		uint32_t versionNumber;
+		uint64_t numRecords;
+};
+
+
+const int maxRecordStringLength = 25;
+
+class BinaryFileRecord{
+	public:
+		uint8_t strLength;
+		char stringBuffer[maxRecordStringLength];
+};
 
 int main()
 {
@@ -65,10 +84,46 @@ int main()
   /* Display the Matrix */
   drawCDKMatrix(myMatrix, true);
 
+
+  //Read the file
+  BinaryFileHeader *myHeader = new BinaryFileHeader();
+  ifstream binInFile("cs3377.bin" , ios::in | ios::binary);
+
+  binInFile.read((char *) myHeader, sizeof(BinaryFileHeader));
+  //Display header...
+  char textToWrite[80];
+  strcpy(textToWrite,"Magic: 0x");
+  sprintf(textToWrite + strlen(textToWrite), "%X", myHeader->magicNumber);
+
+  setCDKMatrixCell(myMatrix, 1,1,textToWrite);
+
+  strcpy(textToWrite, "Version: ");
+ sprintf(textToWrite + strlen(textToWrite), "%u", myHeader->versionNumber);
+  setCDKMatrixCell(myMatrix, 1,2,textToWrite); 
+
+ 
+  strcpy(textToWrite, "NumRecords: ");
+ sprintf(textToWrite + strlen(textToWrite), "%lu", myHeader->numRecords);
+  setCDKMatrixCell(myMatrix, 1,3,textToWrite); 
+  //Now for the records
+  //
+  BinaryFileRecord *myRecord = new BinaryFileRecord();
+
+
+  for(uint64_t i = 0; i < myHeader->numRecords; i++){
+	   binInFile.read((char *) myRecord, sizeof(BinaryFileRecord));
+	  char textToWrite[80];
+	   strcpy(textToWrite, "strlen: ");
+	   sprintf(textToWrite + strlen(textToWrite), "%" PRId8,myRecord->strLength);
+	   setCDKMatrixCell(myMatrix, 2+i,1,textToWrite); 
+
+	   sprintf(textToWrite, "%s", myRecord->stringBuffer);
+	   setCDKMatrixCell(myMatrix, 2+i, 2, textToWrite);
+  }
+
   /*
    * Dipslay a message
    */
-  setCDKMatrixCell(myMatrix, 2, 2, "Test Message");
   drawCDKMatrix(myMatrix, true);    /* required  */
 
   /* So we can see results, pause until a key is pressed. */
